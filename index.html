@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'">
+<title>便签</title>
+<style>
+  :root {
+    --bg: #101218;
+    --bg-soft: #161923;
+    --panel: rgba(255, 255, 255, 0.04);
+    --panel-hover: rgba(255, 255, 255, 0.07);
+    --border: rgba(255, 255, 255, 0.08);
+    --border-hover: rgba(255, 255, 255, 0.13);
+    --text: #e8eaf0;
+    --text-dim: #8b90a0;
+    --text-faint: #5b6070;
+    --accent: #7c6cff;
+    --accent-soft: rgba(124, 108, 255, 0.16);
+    --accent-text: #b7adff;
+    --mint: #4dd6c1;
+    --danger: #ff6b81;
+    --title-grad1: #f0f1f7;
+    --title-grad2: #b8bce0;
+    --scrollbar: rgba(255, 255, 255, 0.1);
+    --btn-hover: rgba(255, 255, 255, 0.09);
+    --check-border: rgba(255, 255, 255, 0.25);
+    --pin: #ffd166;
+    --input-edit-bg: rgba(255, 255, 255, 0.05);
+    --bg-locked: rgba(16, 18, 24, 0.55);
+    --radius: 14px;
+  }
+
+  /* 亮色主题 */
+  :root.light {
+    --bg: #f4f5f9;
+    --bg-soft: #ffffff;
+    --panel: #ffffff;
+    --panel-hover: #f7f8fd;
+    --border: rgba(20, 26, 50, 0.09);
+    --border-hover: rgba(20, 26, 50, 0.16);
+    --text: #2b2e3a;
+    --text-dim: #666c7c;
+    --text-faint: #a3a8b8;
+    --accent: #6a58f0;
+    --accent-soft: rgba(106, 88, 240, 0.1);
+    --accent-text: #6a58f0;
+    --title-grad1: #33364a;
+    --title-grad2: #7a8098;
+    --scrollbar: rgba(20, 26, 50, 0.22);
+    --btn-hover: rgba(20, 26, 50, 0.06);
+    --check-border: rgba(20, 26, 50, 0.3);
+    --pin: #d99a06;
+    --input-edit-bg: rgba(20, 26, 50, 0.04);
+    --bg-locked: rgba(244, 245, 249, 0.6);
+  }
+
+  /* 锁定状态：窗口背景半透明（看得到桌面），内容保持清晰，鼠标悬停恢复不透明 */
+  :root.locked body { background-color: var(--bg-locked); }
+  :root.locked:hover body { background-color: var(--bg); }
+  :root.locked .headline { -webkit-app-region: no-drag; cursor: default; }
+
+  /* 锁定时面板/输入框/按钮也半透明，与透明窗口协调 */
+  :root.locked { --panel: rgba(255, 255, 255, 0.03); --panel-hover: rgba(255, 255, 255, 0.06); }
+  :root.light.locked { --panel: rgba(255, 255, 255, 0.5); --panel-hover: rgba(255, 255, 255, 0.72); }
+  :root.locked:hover { --panel: rgba(255, 255, 255, 0.04); --panel-hover: rgba(255, 255, 255, 0.07); }
+  :root.light.locked:hover { --panel: #ffffff; --panel-hover: #f7f8fd; }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    font-family: -apple-system, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    user-select: none;
+    transition: background-color 0.25s ease;
+  }
+
+  .container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 8px 18px 14px;
+    min-height: 0;
+  }
+
+  .headline {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 10px 2px 14px;
+    -webkit-app-region: drag;
+  }
+
+  .headline .date {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    background: linear-gradient(90deg, var(--title-grad1), var(--title-grad2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* ---------- 窗口控制按钮（置于拖拽区内部，no-drag 才可靠生效） ---------- */
+  .win-controls {
+    position: absolute;
+    top: 50%;
+    right: 2px;
+    transform: translateY(-50%);
+    display: flex;
+    gap: 6px;
+  }
+
+  .win-controls button {
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--panel);
+    color: var(--text-dim);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-app-region: no-drag;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+
+  .win-controls button:hover {
+    background: var(--panel-hover);
+    color: var(--text);
+    border-color: var(--border-hover);
+  }
+
+  .win-controls button.close:hover {
+    background: rgba(255, 82, 104, 0.18);
+    border-color: rgba(255, 82, 104, 0.45);
+    color: #ff7a8d;
+  }
+
+  .win-controls svg { width: 13px; height: 13px; }
+
+  /* 主题按钮图标：暗色时显示太阳（点击切亮），亮色时显示月亮 */
+  #btn-theme .icon-moon { display: none; }
+  :root.light #btn-theme .icon-moon { display: flex; }
+  :root.light #btn-theme .icon-sun { display: none; }
+
+  /* 锁定按钮图标表示当前状态：未锁定显示开锁，锁定后显示锁 */
+  #btn-lock .icon-lock { display: none; }
+  :root.locked #btn-lock .icon-lock { display: flex; }
+  :root.locked #btn-lock .icon-unlock { display: none; }
+
+  /* ---------- 输入区 ---------- */
+  .input-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .input-row input {
+    flex: 1;
+    height: 44px;
+    padding: 0 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--panel);
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+  }
+
+  .input-row input::placeholder { color: var(--text-faint); }
+
+  .input-row input:focus {
+    border-color: rgba(124, 108, 255, 0.55);
+    background: rgba(124, 108, 255, 0.06);
+    box-shadow: 0 0 0 3px rgba(124, 108, 255, 0.12);
+  }
+
+  .btn-add {
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: var(--radius);
+    background: linear-gradient(135deg, #8a78ff, #6a58f0);
+    color: #fff;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s, box-shadow 0.2s, opacity 0.2s;
+    box-shadow: 0 4px 14px rgba(124, 108, 255, 0.35);
+  }
+
+  .btn-add:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(124, 108, 255, 0.5); }
+  .btn-add:active { transform: translateY(0) scale(0.96); }
+
+  /* ---------- 过滤器 ---------- */
+  .filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .filters button {
+    height: 28px;
+    padding: 0 14px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .filters button:hover { color: var(--text); background: var(--panel-hover); }
+
+  .filters button.active {
+    background: var(--accent-soft);
+    border-color: rgba(124, 108, 255, 0.45);
+    color: var(--accent-text);
+  }
+
+  /* ---------- 列表 ---------- */
+  #list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-right: 2px;
+    min-height: 0;
+  }
+
+  #list::-webkit-scrollbar { width: 5px; }
+  #list::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 3px; }
+  #list::-webkit-scrollbar-track { background: transparent; }
+
+  .todo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 14px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    transition: background 0.2s, border-color 0.2s, opacity 0.25s, transform 0.25s, max-height 0.25s, margin 0.25s, padding 0.25s;
+    animation: slide-in 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+    overflow: hidden;
+  }
+
+  @keyframes slide-in {
+    from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .todo:hover { background: var(--panel-hover); border-color: var(--border-hover); }
+
+  .todo.leaving {
+    opacity: 0;
+    transform: translateX(30px) scale(0.95);
+    max-height: 0 !important;
+    margin: -4px 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-width: 0;
+  }
+
+  .todo.pinned { border-color: rgba(255, 209, 102, 0.35); }
+
+  /* checkbox */
+  .check {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    border: 1.5px solid var(--check-border);
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.2s, background 0.25s, transform 0.15s;
+  }
+
+  .check:hover { border-color: var(--accent); transform: scale(1.1); }
+  .check:active { transform: scale(0.9); }
+
+  .check svg {
+    width: 12px;
+    height: 12px;
+    stroke: #fff;
+    stroke-width: 2.5;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 24;
+    stroke-dashoffset: 24;
+    transition: stroke-dashoffset 0.3s ease 0.05s;
+  }
+
+  .todo.done .check {
+    background: linear-gradient(135deg, #8a78ff, #4dd6c1);
+    border-color: transparent;
+  }
+
+  .todo.done .check svg { stroke-dashoffset: 0; }
+
+  /* 文本 */
+  .text {
+    flex: 1;
+    font-size: 14px;
+    line-height: 1.55;
+    word-break: break-all;
+    cursor: text;
+    transition: color 0.25s;
+  }
+
+  .todo.done .text {
+    color: var(--text-faint);
+    text-decoration: line-through;
+    text-decoration-color: rgba(139, 144, 160, 0.6);
+  }
+
+  .text-input {
+    flex: 1;
+    font-size: 14px;
+    background: var(--input-edit-bg);
+    border: 1px solid rgba(124, 108, 255, 0.5);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 4px 10px;
+    outline: none;
+    font-family: inherit;
+  }
+
+  /* 操作按钮 */
+  .actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+  }
+
+  .todo:hover .actions, .todo:focus-within .actions { opacity: 1; }
+
+  .actions button {
+    width: 26px;
+    height: 26px;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--text-faint);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .actions button:hover { background: var(--btn-hover); color: var(--text); }
+  .actions button.del:hover { color: var(--danger); background: rgba(255, 107, 129, 0.12); }
+
+  .actions svg { width: 14px; height: 14px; }
+
+  .todo.pinned .act-pin { color: var(--pin); }
+
+  /* ---------- 空状态 ---------- */
+  .empty {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    color: var(--text-faint);
+  }
+
+  .empty.show { display: flex; }
+
+  .empty svg { width: 64px; height: 64px; opacity: 0.5; color: var(--text-dim); }
+  .empty svg path, .empty svg circle { stroke: currentColor; }
+
+  .empty .tip { font-size: 13px; }
+  .empty .tip kbd {
+    font-family: inherit;
+    font-size: 11px;
+    padding: 1px 6px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--panel);
+  }
+
+  /* ---------- 底部统计 ---------- */
+  .footer {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 4px 0;
+    border-top: 1px solid var(--border);
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--text-faint);
+  }
+
+  .footer .clear-done {
+    border: none;
+    background: transparent;
+    color: var(--text-faint);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 7px;
+    transition: all 0.15s;
+  }
+
+  .footer .clear-done:hover { color: var(--danger); background: rgba(255, 107, 129, 0.1); }
+</style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="headline">
+      <span class="date" id="date"></span>
+      <div class="win-controls" id="win-controls">
+        <button id="btn-lock" title="锁定/解锁窗口（锁定后半透明且不可移动）">
+          <svg class="icon-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+          <svg class="icon-unlock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7-2.5"/></svg>
+        </button>
+        <button id="btn-theme" title="切换日间/夜间主题">
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <button id="btn-min" title="最小化">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14"/></svg>
+        </button>
+        <button id="btn-close" class="close" title="关闭">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="input-row">
+      <input id="input" type="text" maxlength="200" placeholder="记点什么…  回车即可添加" autocomplete="off">
+      <button class="btn-add" id="btn-add" title="添加">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+    </div>
+
+    <div class="filters">
+      <button data-filter="all" class="active">全部</button>
+      <button data-filter="active">待办</button>
+      <button data-filter="done">已完成</button>
+    </div>
+
+    <ul id="list"></ul>
+
+    <div class="empty" id="empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" class="empty-icon">
+        <path d="M4 4h16v13l-4 4H4z"/>
+        <path d="M16 21v-4h4"/>
+        <path d="M8 9h8M8 13h5"/>
+      </svg>
+      <div class="tip">还没有便签，在上方输入框写下第一条吧</div>
+      <div class="tip">双击文字可修改 · <kbd>Enter</kbd> 添加</div>
+    </div>
+
+    <div class="footer">
+      <span id="stats">0 项待办</span>
+      <button class="clear-done" id="clear-done">清除已完成</button>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

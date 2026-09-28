@@ -1,0 +1,31 @@
+{
+  "name": "sticky-notes",
+  "version": "1.0.0",
+  "description": "A minimal & elegant desktop todo notes app",
+  "main": "main.js",
+  "author": "WorkBuddy",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win portable"
+  },
+  "build": {
+    "appId": "com.workbuddy.stickynotes",
+    "productName": "便签",
+    "directories": { "output": "dist" },
+    "win": {
+      "target": [{ "target": "portable", "arch": ["x64"] }],
+      "icon": "build/icon.ico"
+    },
+    "portable": { "artifactName": "StickyNotes-Portable.exe" },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "renderer.js"
+    ]
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  }
+}

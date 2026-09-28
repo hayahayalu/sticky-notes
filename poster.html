@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --accent: #7c6cff;
+    --mint: #4dd6c1;
+    --text: #e8eaf0;
+    --dim: #8b90a0;
+    --panel: rgba(255, 255, 255, 0.05);
+    --border: rgba(255, 255, 255, 0.1);
+  }
+  html, body { width: 1200px; height: 1100px; overflow: hidden; }
+  body {
+    font-family: -apple-system, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+    background: radial-gradient(1200px 800px at 80% -10%, rgba(124,108,255,0.22), transparent 60%),
+                radial-gradient(900px 700px at -10% 110%, rgba(77,214,193,0.16), transparent 55%),
+                linear-gradient(160deg, #0c0d14 0%, #15131f 100%);
+    color: var(--text);
+    padding: 70px 80px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* 顶栏：图标 + 标题 */
+  .top { display: flex; align-items: center; gap: 26px; margin-bottom: 14px; }
+  .logo {
+    width: 86px; height: 86px; border-radius: 22px;
+    background: linear-gradient(135deg, var(--accent), var(--mint));
+    box-shadow: 0 12px 36px rgba(124,108,255,0.45);
+    position: relative; flex-shrink: 0;
+  }
+  .logo::before { /* 折角 */
+    content: ""; position: absolute; top: 0; right: 0;
+    width: 26px; height: 26px;
+    background: #e9ecf8;
+    border-radius: 0 22px 0 8px;
+  }
+  .logo::after { /* 勾 */
+    content: ""; position: absolute; left: 22px; top: 30px;
+    width: 16px; height: 16px;
+    border-radius: 50%; background: #fff;
+  }
+  .title-block .name {
+    font-size: 60px; font-weight: 800; letter-spacing: 1px;
+    background: linear-gradient(90deg, #f3f4fb, #b8bce0);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .title-block .sub { font-size: 23px; color: var(--dim); margin-top: 2px; letter-spacing: 1px; }
+
+  .tag {
+    margin-left: auto; align-self: flex-start; margin-top: 12px;
+    padding: 8px 18px; border-radius: 999px;
+    background: rgba(77,214,193,0.14); border: 1px solid rgba(77,214,193,0.4);
+    color: #6ee0cf; font-size: 16px; font-weight: 600;
+  }
+
+  /* 主体：左预览 右功能 */
+  .main { display: flex; gap: 44px; flex: 1; margin-top: 26px; }
+
+  /* 应用窗口预览 */
+  .preview {
+    width: 470px; flex-shrink: 0; border-radius: 22px;
+    background: #101218; border: 1px solid rgba(255,255,255,0.12);
+    box-shadow: 0 30px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(124,108,255,0.08);
+    padding: 22px 20px 18px; display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .pv-head { display: flex; align-items: center; justify-content: space-between; padding: 4px 2px 16px; }
+  .pv-date { font-size: 26px; font-weight: 700;
+    background: linear-gradient(90deg,#f0f1f7,#b8bce0);
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .pv-btns { display: flex; gap: 7px; }
+  .pv-btns span { width: 22px; height: 22px; border-radius: 7px;
+    border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.05);
+    display: flex; align-items: center; justify-content: center; }
+  .pv-btns span svg { width: 12px; height: 12px; stroke: #8b90a0; fill: none;
+    stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .pv-btns span.close svg { stroke: #ff6b81; }
+  .pv-input { height: 46px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04); margin-bottom: 14px; position: relative; }
+  .pv-input::before { content:"记点什么…"; position:absolute; left:16px; top:50%; transform:translateY(-50%);
+    color: #5b6070; font-size: 15px; }
+  .pv-input .add { position:absolute; right:4px; top:4px; width:38px; height:38px; border-radius:11px;
+    background: linear-gradient(135deg,#8a78ff,#6a58f0); }
+  .pv-filters { display:flex; gap:8px; margin-bottom:14px; }
+  .pv-filters span { height:28px; padding:0 14px; border-radius:999px; border:1px solid rgba(255,255,255,0.1); color:var(--dim); font-size:13px; display:flex; align-items:center; }
+  .pv-filters .active { background: rgba(124,108,255,0.16); border-color: rgba(124,108,255,0.45); color:#b7adff; }
+  .pv-item { display:flex; align-items:center; gap:12px; padding:14px; border-radius:14px;
+    background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); margin-bottom:10px; }
+  .pv-item.pinned { border-color: rgba(255,209,102,0.4); }
+  .pv-check { width:22px; height:22px; border-radius:50%; border:1.5px solid rgba(255,255,255,0.25); flex-shrink:0; }
+  .pv-item.done .pv-check { background: linear-gradient(135deg,#8a78ff,#4dd6c1); border-color:transparent; }
+  .pv-line { flex:1; height:8px; border-radius:5px; background: rgba(255,255,255,0.18); }
+  .pv-item.done .pv-line { background: rgba(91,96,112,0.5); }
+  .pv-item.pinned .pv-line { background: rgba(255,255,255,0.25); }
+  .pv-foot { margin-top:auto; padding-top:12px; border-top:1px solid rgba(255,255,255,0.08); font-size:13px; color:#5b6070; }
+
+  /* 功能网格 */
+  .features { flex:1; display:flex; flex-direction:column; }
+  .features h2 { font-size: 30px; font-weight: 700; margin-bottom: 22px; }
+  .features h2 em { font-style: normal; color: var(--accent); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; flex: 1; align-content: space-evenly; }
+  .feat { padding: 22px 20px; border-radius: 16px;
+    background: var(--panel); border: 1px solid var(--border); }
+  .feat .ic { width: 40px; height: 40px; border-radius: 11px; margin-bottom: 14px;
+    display:flex; align-items:center; justify-content:center;
+    background: linear-gradient(135deg, rgba(124,108,255,0.25), rgba(77,214,193,0.2));
+    border: 1px solid rgba(124,108,255,0.3); }
+  .feat .ic svg { width: 22px; height: 22px; stroke: #c9c0ff; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .feat h3 { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+  .feat p { font-size: 14px; line-height: 1.6; color: var(--dim); }
+
+  /* 底部 */
+  .foot { display:flex; justify-content:space-between; align-items:center; margin-top: 34px; padding-top: 26px;
+    border-top: 1px solid var(--border); }
+  .slogan { font-size: 22px; font-weight: 600; }
+  .slogan em { font-style: normal;
+    background: linear-gradient(90deg,var(--accent),var(--mint));
+    -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .meta { font-size: 14px; color: #5b6070; text-align: right; line-height: 1.7; }
+</style>
+</head>
+<body>
+
+  <div class="top">
+    <div class="logo"></div>
+    <div class="title-block">
+      <div class="name">便签</div>
+      <div class="sub">StickyNotes · 桌面待办，简洁如纸</div>
+    </div>
+    <div class="tag">Windows 便携版</div>
+  </div>
+
+  <div class="main">
+    <div class="preview">
+      <div class="pv-head">
+        <div class="pv-date">9 月 24 日 · 星期四</div>
+        <div class="pv-btns">
+          <span><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span>
+          <span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M5 5l1.4 1.4M17.6 17.6 19 19M3 12h2M19 12h2M5 19l1.4-1.4M17.6 6.4 19 5"/></svg></span>
+          <span><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></span>
+          <span class="close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
+        </div>
+      </div>
+      <div class="pv-input"><div class="add"></div></div>
+      <div class="pv-filters">
+        <span class="active">全部</span><span>待办</span><span>已完成</span>
+      </div>
+      <div class="pv-item pinned">
+        <div class="pv-check"></div><div class="pv-line"></div>
+      </div>
+      <div class="pv-item done">
+        <div class="pv-check"></div><div class="pv-line"></div>
+      </div>
+      <div class="pv-item">
+        <div class="pv-check"></div><div class="pv-line"></div>
+      </div>
+      <div class="pv-item done">
+        <div class="pv-check"></div><div class="pv-line"></div>
+      </div>
+      <div class="pv-item pinned">
+        <div class="pv-check"></div><div class="pv-line"></div>
+      </div>
+      <div class="pv-item">
+        <div class="pv-check"></div><div class="pv-line"></div>
+      </div>
+      <div class="pv-item done">
+        <div class="pv-check"></div><div class="pv-line"></div>
+      </div>
+      <div class="pv-foot">4 项待办 · 已完成 3 项</div>
+    </div>
+
+    <div class="features">
+      <h2>核心<em>功能</em></h2>
+      <div class="grid">
+        <div class="feat">
+          <div class="ic"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
+          <h3>随手记录</h3>
+          <p>回车即添加，双击文字可修改，勾选完成带动画。</p>
+        </div>
+        <div class="feat">
+          <div class="ic"><svg viewBox="0 0 24 24"><path d="M12 17v5M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16h14v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1z"/></svg></div>
+          <h3>置顶待办</h3>
+          <p>重要事项一键置顶常驻，黄色边框醒目提示。</p>
+        </div>
+        <div class="feat">
+          <div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></div>
+          <h3>日 / 夜双主题</h3>
+          <p>暗色护眼、亮色清爽，一键切换并自动记住偏好。</p>
+        </div>
+        <div class="feat">
+          <div class="ic"><svg viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7-2.5"/></svg></div>
+          <h3>窗口锁定</h3>
+          <p>锁定后半透明悬浮桌面、不可拖动，鼠标悬停恢复清晰。</p>
+        </div>
+        <div class="feat">
+          <div class="ic"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></div>
+          <h3>永久保存</h3>
+          <p>本地存储，关机重启隔天不丢，无需登录联网。</p>
+        </div>
+        <div class="feat">
+          <div class="ic"><svg viewBox="0 0 24 24"><path d="M3 6h18M6 12h12M9 18h6"/></svg></div>
+          <h3>过滤统计</h3>
+          <p>全部 / 待办 / 已完成切换，底部实时统计与一键清理。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div class="slogan">让待办<em>轻盈落地</em>，专注当下每一件事</div>
+    <div class="meta">Windows 10 / 11 · 免安装便携版<br>Electron · 本地优先 · 永久免费</div>
+  </div>
+
+</body>
+</html>
